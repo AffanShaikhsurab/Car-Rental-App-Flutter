@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 
 class AuthenticationService extends ChangeNotifier {
   final auth.FirebaseAuth _firebaseAuth = auth.FirebaseAuth.instance;
+  
   CollectionReference users = FirebaseFirestore.instance.collection('users');
 
   User? _userFromFirebase(auth.User? user) {
     if (user == null) {
+
       return null;
     }
 
@@ -37,16 +39,28 @@ class AuthenticationService extends ChangeNotifier {
     String name,
     BuildContext buildContext,
   ) async {
-    final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+        print( _firebaseAuth.app.toString());
+        print(users.toString());
+        print("Sending........");
+
+var credential;
+try {
+   credential = await _firebaseAuth.createUserWithEmailAndPassword(
+    email: email,
+    password: password,
+  );
+  // Handle successful user creation
+} catch (e) {
+  // Handle any errors
+  print('Error creating user: $e');
+}
     final auth.User user = _firebaseAuth.currentUser!;
     users.doc(user.uid).set({
       'email': email,
       'id': user.uid,
       'name': name,
     });
+    print(user.toString());
     user.updateDisplayName(name);
 
     user.reload();

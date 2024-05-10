@@ -1,5 +1,11 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:car_rental/pages/details_state.dart';
+import 'package:car_rental/widgets/build_snack_error.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -13,10 +19,12 @@ class DetailsPage extends StatefulWidget {
   final String carName;
   final int carPower;
   final String people;
+  final String carId;
   final String bags;
   final int carPrice;
   final String carRating;
   final bool isRotated;
+  final isRegistered = false;
 
   const DetailsPage({
     Key? key,
@@ -26,21 +34,87 @@ class DetailsPage extends StatefulWidget {
     required this.carPower,
     required this.people,
     required this.bags,
+    required this.carId,
     required this.carPrice,
     required this.carRating,
     required this.isRotated,
+    
   }) : super(key: key);
 
   @override
   _DetailsPageState createState() => _DetailsPageState();
+
 }
+
+
+
+Future<bool> isCarAlreadyRented(String carId) async {
+  try {
+    DocumentSnapshot carSnapshot = await FirebaseFirestore.instance
+        .collection('cars') // Assuming 'cars' is the collection where your cars are stored
+        .doc(carId) // Specify the ID of the car document you want to check
+        .get();
+
+    if (carSnapshot.exists) {
+      // Check if the rented_car field is empty or not
+      var data = carSnapshot.data() as Map<String, dynamic>?; // Explicitly cast to Map<String, dynamic> or null
+      if (data != null && data["rented_user"] == null) {
+        // Car is not rented
+        return false;
+      } else {
+        // Car is rented
+    
+        carData = data;
+        return true;
+      }
+    } else {
+      // Car document does not exist
+      print('Car document does not exist');
+      return false;
+    }
+  } catch (error) {
+    print('Error checking if car is already rented: $error');
+    return false;
+  }
+}
+Map<String, dynamic>? carData ;
+
+Future<String?> getCurrentUserId() async {
+  FirebaseAuth auth = FirebaseAuth.instance;
+  User? user = auth.currentUser;
+
+  if (user != null) {
+    return user.uid;
+  } else {
+    // No user signed in
+    return null;
+  }
+}
+
+
 
 class _DetailsPageState extends State<DetailsPage> {
   final Completer<GoogleMapController> _controller = Completer();
   static const LatLng _center = LatLng(50.470685, 19.070234);
+  var isCarReg = false;
   void _onMapCreated(GoogleMapController controller) {
     _controller.complete(controller);
   }
+  void check(var carId)async{
+     bool isCarAlreadyrented= await isCarAlreadyRented(carId);
+          if (isCarAlreadyrented == true){
+              final userid = await getCurrentUserId();
+
+
+              if (carData!["rented_user"] == userid){
+              context.read<detialedCubit>().change(true);
+              
+              }else{
+                    context.read<detialedCubit>().change(false);
+
+              }}
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +123,11 @@ class _DetailsPageState extends State<DetailsPage> {
     bool isDarkMode = brightness ==
         Brightness.dark; //check if device is in dark or light mode
 
-    return Scaffold(
+      check(widget.carId);
+
+    return 
+    
+    Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(40.0), //appbar size
         child: AppBar(
@@ -187,7 +265,7 @@ class _DetailsPageState extends State<DetailsPage> {
                           ),
                           const Spacer(),
                           Text(
-                            '${widget.carPrice}\$',
+                            '${widget.carPrice}\Rs',
                             style: GoogleFonts.poppins(
                               color: isDarkMode
                                   ? Colors.white
@@ -288,7 +366,7 @@ class _DetailsPageState extends State<DetailsPage> {
                                         size: size.height * 0.05,
                                       ),
                                       Text(
-                                        'Katowice Airport',
+                                        'Belgaum ',
                                         textAlign: TextAlign.center,
                                         style: GoogleFonts.poppins(
                                           color: isDarkMode
@@ -299,7 +377,7 @@ class _DetailsPageState extends State<DetailsPage> {
                                         ),
                                       ),
                                       Text(
-                                        'Wolności 90, 42-625 Pyrzowice',
+                                        'Near Kle Tech Belgaum',
                                         textAlign: TextAlign.center,
                                         style: GoogleFonts.poppins(
                                           color: isDarkMode
@@ -335,7 +413,7 @@ class _DetailsPageState extends State<DetailsPage> {
                       ),
                     ],
                   ),
-                  buildSelectButton(size, isDarkMode),
+                  buildSelectButton(size, isDarkMode , widget.carId , context),
                 ],
               ),
             ),
@@ -408,7 +486,7 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 }
 
-Align buildSelectButton(Size size, bool isDarkMode) {
+Align buildSelectButton(Size size, bool isDarkMode  , String carId , BuildContext context) {
   return Align(
     alignment: Alignment.bottomCenter,
     child: Padding(
@@ -419,26 +497,95 @@ Align buildSelectButton(Size size, bool isDarkMode) {
         height: size.height * 0.07,
         width: size.width,
         child: InkWell(
-          onTap: () {},
+          onTap: () async {
+          context.read<detialedCubit>().change(null);
+
+          bool isCarAlreadyrented= await isCarAlreadyRented(carId);
+          if (isCarAlreadyrented == true){
+              final userid = await getCurrentUserId();
+
+
+              if (carData!["rented_user"] == userid){
+              context.read<detialedCubit>().change(true);
+              EasyLoading.dismiss();
+
+                  buildSnackError(
+"you already have rented this car"                         ,                     context,
+                                              size,
+                                            );
+              print("you already have rented this car");
+
+              }else{
+                                          context.read<detialedCubit>().change(false);
+
+                              EasyLoading.dismiss();
+
+                 buildSnackError(
+"already another user is rented this car"                         ,                     context,
+                                              size,
+                                            );
+              print("already another user is rented this car");
+              }
+          }else{
+              final userid = await getCurrentUserId();
+              FirebaseFirestore.instance
+                  .collection('cars') // Assuming 'cars' is the collection where your cars are stored
+                  .doc(carId) // Specify the ID of the car document you want to update
+                  .update({
+                'rented_user': userid,
+              }).then((value) {
+                    context.read<detialedCubit>().change(true);
+                                  EasyLoading.dismiss();
+
+
+                 buildSnackError(
+"You Rented this car successfully"                         ,                     context,
+                                              size,
+                                            );
+                print('Rented user updated successfully');
+              }).catchError((error) {
+                          context.read<detialedCubit>().change(false);
+
+                              EasyLoading.dismiss();
+
+                             buildSnackError(
+"Failed to update rented user"                         ,                     context,
+                                              size,
+                                            );
+                print('Failed to update rented user: $error');
+
+              });
+        }
+ 
+  
+          },
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
               color: const Color(0xff3b22a1),
             ),
             child: Align(
-              child: Text(
-                'Select',
+              child: 
+              BlocBuilder<detialedCubit , bool?>(builder: (context, state) {
+                return
+                state == null ?
+                Center(child: CircularProgressIndicator(),) : 
+                 Text(
+                 state == true ? 'Rented' : "Select",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.lato(
                   fontSize: size.height * 0.025,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
-              ),
+              );
+              },)
+              
             ),
           ),
         ),
       ),
     ),
   );
+  
 }

@@ -30,7 +30,9 @@ Padding buildCar(int i, Size size, bool isDarkMode, data) {
             ),
             child: InkWell(
               onTap: () {
+                print(data.docs[i].id.toString());
                 Get.to(DetailsPage(
+                  carId: data.docs[i].id,
                   carImage: data.docs[i]['carImage'],
                   carClass: data.docs[i]['carClass'],
                   carName: data.docs[i]['carName'],
@@ -98,7 +100,7 @@ Padding buildCar(int i, Size size, bool isDarkMode, data) {
                   Row(
                     children: [
                       Text(
-                        '${data.docs[i]['carPrice']}\$',
+                        '${data.docs[i]['carPrice']}\Rs',
                         style: GoogleFonts.poppins(
                           color: isDarkMode
                               ? Colors.white

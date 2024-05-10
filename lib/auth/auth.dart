@@ -287,6 +287,8 @@ class _AuthPageState extends State<AuthPage> {
                             Colors.white,
                           ],
                           onPressed: () async {
+                                    print("clicked ");
+
                             if (register) {
                               if (_firstnamekey.currentState!.validate()) {
                                 if (_emailKey.currentState!.validate()) {
@@ -300,6 +302,8 @@ class _AuthPageState extends State<AuthPage> {
                                             size);
                                       } else {
                                         try {
+                                                  print("credential.toString()");
+
                                           await authService
                                               .createUserWithEmailAndPassword(
                                             textfieldsStrings[1],
